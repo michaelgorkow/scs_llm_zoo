@@ -15,9 +15,6 @@ Repository on Hugging Face 🤗:
 Make sure that you created all required databse objects from the general setup instructions [here](https://github.com/michaelgorkow/scs_llm_zoo/blob/main/README.md).
 
 ### 2. Build & Upload the container
-Feel free to use any one the provided container images.  
-Just make sure that the image name in your spec.yml file is the same as the one you use for building and uploading the image.  
-This example code assumes an image called `llm_service`.
 ```cmd
 docker build -t <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/jais_13b_service:latest .
 docker push <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/jais_13b_service:latest

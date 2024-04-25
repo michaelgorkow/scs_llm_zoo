@@ -7,9 +7,11 @@ This repository contains code to run various Large Language Models (LLMs) in Sno
 
 ## Compute Requirements
 Snowflake currently offers three different types of GPU pools:
-* GPU_NV_S (1x NVIDIA A10G)
-* GPU_NV_M (4x NVIDIA A10G)
-* GPU_NV_L (8x NVIDIA A100)
+| INSTANCE_FAMILY | GPU | GPU Memory per GPU (GiB) |
+|:----------:|:----------:|:----------:|
+| GPU_NV_S    | 1x NVIDIA A10G   | 24   |
+| GPU_NV_M    | 4x NVIDIA A10G   | 24   |
+| GPU_NV_L    | 8x NVIDIA A100   | 40   |
 
 Each model has different GPU requirements which I list in the subfolders.  
 If your model only requires a small GPU pool, you can skip the steps of creating a medium and large pool.
