@@ -23,7 +23,7 @@ You can use Snowflake's UI to upload the phi_3_mini_128k_instruct_spec.yml to @L
 
 ### 4. Create the LLM Service
 ```sql
--- Create Jais 13B service
+-- Create LLM service
 CREATE SERVICE LLM_DB.PUBLIC.PHI_3_MINI_128K_INSTRUCT_SERVICE
   IN COMPUTE POOL LLM_GPU_POOL_SMALL
   FROM @LLM_DB.PUBLIC.CONTAINER_FILES
