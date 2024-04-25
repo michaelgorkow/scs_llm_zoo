@@ -1,0 +1,26 @@
+spec:
+  container:
+  - name: phi-3-mini-128k-service-container
+    image: /llm_db/public/image_repository/phi_3_mini_128k_instruct_service:latest
+    resources:
+      requests:
+        nvidia.com/gpu: 1
+      limits:
+        nvidia.com/gpu: 1
+    env:
+      HUGGINGFACE_MODEL: microsoft/Phi-3-mini-128k-instruct
+    secrets:
+    - snowflakeSecret: llm_db.public.huggingface_token
+      secretKeyRef: SECRET_STRING
+      envVarName: HF_TOKEN
+    volumeMounts:
+      - name: llm-models
+        mountPath: /llm_models
+  endpoint:
+  - name: api
+    port: 9000
+  volume:
+  - name: llm-models
+    source: "@LLM_DB.PUBLIC.LLM_MODELS"
+    uid: 1000
+    gid: 1000
