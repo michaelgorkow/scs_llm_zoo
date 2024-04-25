@@ -1,0 +1,26 @@
+spec:
+  container:
+  - name: jais-13b-service-container
+    image: /llm_db/public/image_repository/jais_13b_service:latest
+    resources:
+      requests:
+        nvidia.com/gpu: 4
+      limits:
+        nvidia.com/gpu: 4
+    env:
+      HUGGINGFACE_MODEL: inception-mbzuai/jais-13b-chat
+    secrets:
+    - snowflakeSecret: llm_db.public.huggingface_token
+      secretKeyRef: SECRET_STRING
+      envVarName: HF_TOKEN
+    volumeMounts:
+      - name: llm-models
+        mountPath: /llm_models
+  endpoint:
+  - name: api
+    port: 9000
+  volume:
+  - name: llm-models
+    source: "@LLM_DB.PUBLIC.LLM_MODELS"
+    uid: 1000
+    gid: 1000
