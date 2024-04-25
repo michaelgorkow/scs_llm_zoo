@@ -60,7 +60,7 @@ AS '/complete_custom';
 -- Chat with with default settings:
 SELECT LLM_DB.PUBLIC.PHI_3_MINI_128K_INSTRUCT_COMPLETE('Generate the next 3 numbers for this Fibonacci sequence: 0, 1, 1, 2.') AS RESPONSE;
 -- Define system_prompt, max_token, temperature and top_p yourself:
-SELECT LLAMA3.PUBLIC.PHI_3_MINI_128K_INSTRUCT_COMPLETE_CUSTOM(
+SELECT LLM_DB.PUBLIC.PHI_3_MINI_128K_INSTRUCT_COMPLETE_CUSTOM(
     'You are a coding assistant for Python. Only return Python code.', 
     'Write Python code to generate the fibonacci sequence.', 
     500, 
