@@ -16,7 +16,7 @@ Make sure that you created all required databse objects from the general setup i
 
 ### 2. Build & Upload the container
 ```cmd
-docker build build --platform linux/amd64 -t <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/jais_13b_service:latest .
+docker build --platform linux/amd64 -t <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/jais_13b_service:latest .
 docker push <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/jais_13b_service:latest
 ```
 
