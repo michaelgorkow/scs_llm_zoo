@@ -59,23 +59,36 @@ AS '/complete_image';
 
 ### 6. Call the service functions
 ```sql
--- Chat with with default settings:
+-- Simple example with text input only
 SELECT LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE(
     'Generate the next 3 numbers for this Fibonacci sequence: 0, 1, 1, 2.', 
     object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8)) AS RESPONSE;
 
--- Query the LLM with an Image from a Snowflake stage
+-- Simple example with a single image
 SELECT LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(
     'Who is this?', 
     object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8), 
     GET_PRESIGNED_URL('@IMAGE_FILES', 'obama.jpg'));
 
--- Query the LLM with images from a Snowflake stage using a Directory table
-SELECT LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(
+-- Querying multiple image files via a Directory Table
+SELECT RELATIVE_PATH,
+    LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(
     'Who is this?', 
-    object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8), 
-    GET_PRESIGNED_URL('@IMAGE_FILES', RELATIVE_PATH))
-FROM DIRECTORY('@IMAGE_FILES');
+    object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8), GET_PRESIGNED_URL('@IMAGE_FILES', RELATIVE_PATH))
+FROM DIRECTORY('@IMAGE_FILES') 
+WHERE RELATIVE_PATH LIKE 'celebs/%';
+
+-- Querying multiple image files via a Directory Table and transform output
+SELECT RELATIVE_PATH,
+    LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(
+    'Describe the person in this image. Return a JSON like this: {"gender":gender, "age":age, "style":style}. Age should should be a range no greater than 10 years.', 
+    object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8), GET_PRESIGNED_URL('@IMAGE_FILES', RELATIVE_PATH)) AS RESPONSE,
+    try_parse_json(REGEXP_SUBSTR(RESPONSE, '\\{(.|\\s)*\\}')) AS PARSED_JSON,
+    PARSED_JSON['gender']::TEXT AS GENDER,
+    PARSED_JSON['age']::TEXT AS AGE,
+    PARSED_JSON['style']::TEXT AS STYLE
+FROM DIRECTORY('@IMAGE_FILES') 
+WHERE RELATIVE_PATH LIKE 'people/%';
 ```
 
 ### 7. Streamlit Apps
