@@ -9,6 +9,7 @@ from threading import Thread
 from fastapi.responses import StreamingResponse
 import os
 import base64
+import pypdfium2 as pdfium
 os.environ['HF_HOME'] = '/llm_models'
 model_id = os.getenv('HUGGINGFACE_MODEL')
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
@@ -52,62 +53,17 @@ def base64_to_pil_image(base64_str: str) -> Image.Image:
     # Open the image from the buffer using PIL
     image = Image.open(img_buffer)
     return image
-
-# Standard function with default values, not supporting images
-@app.post("/complete", tags=["Endpoints"])
-async def complete(request: Request):
-    request_body = await request.json()
-    request_body = request_body['data']
-    return_data = []
-    for index, input_prompt, generation_args in request_body:
-        inputs = tokenizer.apply_chat_template([{"role": "user", "content": input_prompt}],
-                                            add_generation_prompt=True, tokenize=True, return_tensors="pt",
-                                            return_dict=True)  
-        inputs = inputs.to('cuda')
-        with torch.no_grad():
-            outputs = model.generate(**inputs, **generation_args)
-            outputs = outputs[:, inputs['input_ids'].shape[1]:]
-            response = tokenizer.decode(outputs[0]).replace('<|endoftext|>','')
-        return_data.append([index, response])
-    return {"data": return_data}
-
-@app.post("/complete_image", tags=["Endpoints"])
-async def complete_image(request: Request):
-    request_body = await request.json()
-    request_body = request_body['data']
-    return_data = []
-    for index, input_prompt, generation_args, image_url in request_body:
-        # Fetch the image
-        response = requests.get(image_url)
-        image = Image.open(BytesIO(response.content)).convert('RGB')
-        inputs = tokenizer.apply_chat_template([{"role": "user", "image": image, "content": input_prompt}],
-                                            add_generation_prompt=True, tokenize=True, return_tensors="pt",
-                                            return_dict=True)  
-        inputs = inputs.to('cuda')
-        with torch.no_grad():
-            outputs = model.generate(**inputs, **generation_args)
-            outputs = outputs[:, inputs['input_ids'].shape[1]:]
-            response = tokenizer.decode(outputs[0]).replace('<|endoftext|>','')
-        return_data.append([index, response])
-    return {"data": return_data}
     
-@app.post("/complete_stream", tags=["Endpoints"])
-async def complete_stream(request: Request):
-    request_body = await request.json()
-    request_body = request_body['data']
-    
-    input_prompt = request_body[0][0]
-    generation_args = request_body[0][1]
-    inputs = tokenizer.apply_chat_template([{"role": "user", "content": input_prompt}],
-                                        add_generation_prompt=True, tokenize=True, return_tensors="pt",
-                                        return_dict=True)  
-    inputs = inputs.to('cuda')
-    generation_args = {
-        **inputs,
-        **generation_args,
-        'streamer': streamer
-    }
-    return StreamingResponse(generate_text_stream(generation_args), media_type="text/plain")
+def pil_image_to_base64(image: Image.Image) -> str:
+    # Create a BytesIO buffer to hold the image data
+    buffered = BytesIO()
+    # Save the image to the buffer in PNG format
+    image.save(buffered, format="PNG")
+    # Get the byte data from the buffer
+    img_byte_data = buffered.getvalue()
+    # Encode the byte data to base64 string
+    base64_str = base64.b64encode(img_byte_data).decode("utf-8")
+    return base64_str
 
 # Function for streaming LLM output
 def generate_text_stream(generation_args):
@@ -115,33 +71,79 @@ def generate_text_stream(generation_args):
     thread.start()
     for next_token in streamer:
         yield next_token.replace('<|endoftext|>','')
-        
-@app.post("/complete_image_stream", tags=["Endpoints"])
-async def complete_image_stream(request: Request):
+
+@app.post("/complete", tags=["Endpoints"])
+async def complete(request: Request):
     request_body = await request.json()
     request_body = request_body['data']
+    return_data = []
+
+    for index, payload in request_body:
+        prompt = payload['prompt']
+        args = payload['args']
+        generation_args = args.get('generation_args', {}) #args['generation_args']
+        logger.info(prompt)
+        logger.info(args)
+        logger.info(generation_args)
+
+        # Function to handle image loading and processing
+        def load_image_from_args(args):
+            logger.info('Found file')
+            if 'file_url' in args:
+                response = requests.get(args['file_url'])
+                file_bytes = BytesIO(response.content)
+                file_bytes_r = file_bytes.read()
+                # if file is PNG or JPEG
+                if file_bytes_r.startswith((b'\xff\xd8\xff', b'\x89\x50\x4e\x47')):
+                    image = Image.open(file_bytes).convert('RGB')
+                # if file is PDF
+                if file_bytes_r.startswith(b'%PDF'):
+                    pdf = pdfium.PdfDocument(file_bytes_r)
+                    page = pdf[args['pdf_page']]
+                    # Render the page
+                    bitmap = page.render(
+                        scale = 1,    # 72dpi resolution
+                        rotation = 0  # no additional rotation
+                    )
+                    image = bitmap.to_pil()
+            if 'base64_image_string' in args:
+                image = base64_to_pil_image(args['base64_image_string']).convert('RGB')
+            return image
+
+        # Check if image processing is needed
+        image = load_image_from_args(args) if any(key in args for key in ['file_url', 'base64_image_string']) else None
+
+        # Prepare inputs based on whether an image is included
+        if image:
+            inputs = tokenizer.apply_chat_template([{"role": "user", "image": image, "content": prompt}],
+                                                    add_generation_prompt=True, tokenize=True, return_tensors="pt",
+                                                    return_dict=True)
+        else:
+            inputs = tokenizer.apply_chat_template([{"role": "user", "content": prompt}],
+                                                    add_generation_prompt=True, tokenize=True, return_tensors="pt",
+                                                    return_dict=True)
+
+        inputs = inputs.to('cuda')
+
+        # Handle streaming response
+        if args.get('stream'):
+            logger.info('STREAMED RESPONSE')
+            generation_args = {**inputs, **generation_args, 'streamer': streamer}
+            return StreamingResponse(generate_text_stream(generation_args), media_type="text/plain")
+        
+        # Handle non-streaming response (called via Snowflake Service Function)
+        else:
+            logger.info('NON STREAMED RESPONSE')
+            with torch.no_grad():
+                outputs = model.generate(**inputs, **generation_args)
+                outputs = outputs[:, inputs['input_ids'].shape[1]:]
+                #response = tokenizer.decode(outputs[0]).replace('<|endoftext|>', '')
+                response = {'LLM_OUTPUT_TEXT': tokenizer.decode(outputs[0]).replace('<|endoftext|>', '')}
+            # if user wants to return base64 image
+            if 'return_image_base64' in args:
+                logger.info('BASE64 IMAGE:')
+                logger.info(pil_image_to_base64(image))
+                response['base64_image'] = pil_image_to_base64(image)
+            return_data.append([index, response])
     
-    input_prompt = request_body[0][0]
-    generation_args = request_body[0][1]
-    image_url = request_body[0][2]
-    
-    if 'base64_image_string' in generation_args:
-        # if user provided image as part of the API call
-        image = base64_to_pil_image(generation_args['base64_image_string'])
-        image = image.convert('RGB')
-        # remove base64 string from generation_args
-        generation_args.pop('base64_image_string')
-    else:
-        # If not, fetch the image
-        response = requests.get(image_url)
-        image = Image.open(BytesIO(response.content)).convert('RGB')
-    inputs = tokenizer.apply_chat_template([{"role": "user", "image": image, "content": input_prompt}],
-                                        add_generation_prompt=True, tokenize=True, return_tensors="pt",
-                                        return_dict=True)  
-    inputs = inputs.to('cuda')
-    generation_args = {
-        **inputs,
-        **generation_args,
-        'streamer': streamer
-    }
-    return StreamingResponse(generate_text_stream(generation_args), media_type="text/plain")
+    return {"data": return_data}

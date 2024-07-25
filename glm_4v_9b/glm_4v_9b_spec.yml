@@ -9,6 +9,10 @@ spec:
         nvidia.com/gpu: 1
     env:
       HUGGINGFACE_MODEL: THUDM/glm-4v-9b
+      SNOWFLAKE_WAREHOUSE: COMPUTE_WH
+      SNOWFLAKE_DATABASE: LLM_DB
+      SNOWFLAKE_SCHEMA: PUBLIC
+      SNOWFLAKE_ROLE: LLM_ROLE
     volumeMounts:
       - name: llm-models
         mountPath: /llm_models

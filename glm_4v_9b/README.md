@@ -40,55 +40,44 @@ SELECT SYSTEM$GET_SERVICE_STATUS('GLM_V4_9B_SERVICE');
 SELECT SYSTEM$GET_SERVICE_LOGS('GLM_V4_9B_SERVICE',0,'glm-4v-9b-service-container');
 ```
 
-### 5. Create the service functions
+### 5. Create the service function
 ```sql
--- Create service function (text only)
-CREATE OR REPLACE FUNCTION LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE(INPUT_PROMPT TEXT, GENERATION_ARGS OBJECT)
-RETURNS TEXT
+-- Create the Service Function
+CREATE OR REPLACE FUNCTION LLM_DB.PUBLIC.GLM_V4_9B(PAYLOAD OBJECT)
+RETURNS OBJECT
 SERVICE=LLM_DB.PUBLIC.GLM_V4_9B_SERVICE
 ENDPOINT=API
 AS '/complete';
-
--- Create service function that supports an image url
-CREATE OR REPLACE FUNCTION LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(INPUT_PROMPT TEXT, GENERATION_ARGS OBJECT, IMAGE_URL TEXT)
-RETURNS TEXT
-SERVICE=LLM_DB.PUBLIC.GLM_V4_9B_SERVICE
-ENDPOINT=API
-AS '/complete_image';
 ```
 
 ### 6. Call the service functions
 ```sql
--- Simple example with text input only
-SELECT LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE(
-    'Generate the next 3 numbers for this Fibonacci sequence: 0, 1, 1, 2.', 
-    object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8)) AS RESPONSE;
+-- Test function in SQL with pure text
+SELECT object_construct('prompt','Write a small poem about the company Snowflake.',
+                        'args',object_construct(
+                            'generation_args',object_construct(
+                                'max_length',2500,
+                                'top_p',0.8
+                            )
+                        )
+        ) AS LLM_QUERY,
+        GLM_V4_9B(LLM_QUERY)['LLM_OUTPUT_TEXT']::TEXT AS LLM_RESPONSE;
 
--- Simple example with a single image
-SELECT LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(
-    'Who is this?', 
-    object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8), 
-    GET_PRESIGNED_URL('@IMAGE_FILES', 'obama.jpg'));
-
--- Querying multiple image files via a Directory Table
-SELECT RELATIVE_PATH,
-    LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(
-    'Who is this?', 
-    object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8), GET_PRESIGNED_URL('@IMAGE_FILES', RELATIVE_PATH))
-FROM DIRECTORY('@IMAGE_FILES') 
-WHERE RELATIVE_PATH LIKE 'celebs/%';
-
--- Querying multiple image files via a Directory Table and transform output
-SELECT RELATIVE_PATH,
-    LLM_DB.PUBLIC.GLM_V4_9B_COMPLETE_IMAGE(
-    'Describe the person in this image. Return a JSON like this: {"gender":gender, "age":age, "style":style}. Age should should be a range no greater than 10 years.', 
-    object_construct('max_length',2500,'top_k',1,'top_p',0.8,'temperature',0.8), GET_PRESIGNED_URL('@IMAGE_FILES', RELATIVE_PATH)) AS RESPONSE,
-    try_parse_json(REGEXP_SUBSTR(RESPONSE, '\\{(.|\\s)*\\}')) AS PARSED_JSON,
-    PARSED_JSON['gender']::TEXT AS GENDER,
-    PARSED_JSON['age']::TEXT AS AGE,
-    PARSED_JSON['style']::TEXT AS STYLE
-FROM DIRECTORY('@IMAGE_FILES') 
-WHERE RELATIVE_PATH LIKE 'people/%';
+-- Test function in SQL with Images from a Snowflake Stage
+SELECT RELATIVE_PATH, 
+       object_construct('prompt','Describe this image',
+                        'args',object_construct(
+                            'file_url',GET_PRESIGNED_URL('@IMAGE_FILES', RELATIVE_PATH),
+                            'stream',FALSE,
+                            'return_image_base64',FALSE,
+                            'generation_args',object_construct(
+                                'max_length',2500,
+                                'top_p',0.8
+                            )
+                        )
+        ) AS LLM_QUERY,
+        GLM_V4_9B(LLM_QUERY)['LLM_OUTPUT_TEXT']::TEXT AS LLM_RESPONSE
+FROM DIRECTORY('@IMAGE_FILES') LIMIT 1;
 ```
 
 ### 7. Streamlit Apps
