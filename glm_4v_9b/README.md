@@ -115,3 +115,4 @@ The demo notebook `multimodal_demo.ipynb` contains the following examples:
 * Explaining Graphs
 
 ### 9. Demo Video
+[![Video ansehen](https://img.youtube.com/vi/0Jv0dpkBvvM/0.jpg)](https://www.youtube.com/watch?v=0Jv0dpkBvvM)
