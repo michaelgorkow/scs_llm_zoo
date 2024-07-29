@@ -7,7 +7,7 @@ Model Repository on Hugging Face 🤗:
 [THUDM/glm-4v-9b](https://huggingface.co/THUDM/glm-4v-9b/blob/main/README_en.md)
 
 Supporting Blog article:  
-[Hey Snowflake, describe this image! Multimodel Models in Snowflake](https://medium.com/@michaelgorkow/multimodal-model-in-snowflake-0d9c05fa4518?source=friends_link&sk=de4cc64b8f3039f47bd7396906146124)
+[Hey Snowflake, describe this image! Multimodal Models in Snowflake](https://medium.com/@michaelgorkow/multimodal-model-in-snowflake-0d9c05fa4518?source=friends_link&sk=de4cc64b8f3039f47bd7396906146124)
 
 ### Minimum Requirements
 * 1x GPU_NV_S (1x NVIDIA A10G)
