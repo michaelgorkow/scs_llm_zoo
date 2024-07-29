@@ -93,6 +93,8 @@ SHOW ENDPOINTS IN SERVICE LLM_DB.PUBLIC.GLM_V4_9B_SERVICE;
 You should see these two endpoints and their corresponding URLs:  
 <img width="1000" src="./misc/endpoints.png" alt="endpoints" />
 
+Open the ingress-URL for streamlit in any browser, login to your Snowflake account and you can start chatting with the LLM from any device.  
+
 The same Streamlit code that runs in the container can also run in Streamlit in Snowflake (SiS). However, there are a couple of limitations: Service Functions do not support streamed responses, and it is not yet possible to authenticate to the Service via OAuth in SiS. Therefore, you cannot enable streamed responses.
 To get the Streamlit app up and running in Snowflake, simply copy the code into a new Streamlit app within Snowflake.
 
