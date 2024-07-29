@@ -1,5 +1,7 @@
 # GLM-4V-9B
-GLM-4-9B is an open-source model from the latest GLM-4 series developed by Zhipu AI. This model, GLM-4V-9B, excels in dialogue capabilities in both Chinese and English with a high resolution of 1120x1120. It outperforms other models, such as GPT-4-turbo-2024-04-09, Gemini 1.0 Pro, Qwen-VL-Max, and Claude 3 Opus, in various multimodal evaluations. These evaluations encompass a wide range of abilities, including proficiency in Chinese and English, perception and reasoning, text recognition, and chart understanding. Additionally, this generation of models supports 26 languages, including Japanese, Korean, and German, enhancing its multilingual capabilities.
+GLM-4V–9B is an open-source model from the latest GLM-4 series developed by Zhipu AI. This model excels in dialogue capabilities in both Chinese and English with a high resolution of 1120x1120. It outperforms other models, such as GPT-4-turbo-2024–04–09, Gemini 1.0 Pro, Qwen-VL-Max, and Claude 3 Opus, in various multimodal evaluations.  
+
+These evaluations encompass a wide range of abilities, including proficiency in Chinese and English, perception and reasoning, text recognition, and chart understanding. Additionally, this generation of models supports 26 languages, including Japanese, Korean, and German, enhancing its multilingual capabilities.
 
 Repository on Hugging Face 🤗:  
 [THUDM/glm-4v-9b](https://huggingface.co/THUDM/glm-4v-9b/blob/main/README_en.md)
@@ -7,8 +9,8 @@ Repository on Hugging Face 🤗:
 ### Minimum Requirements
 * 1x GPU_NV_S (1x NVIDIA A10G)
 
-We are loading with `load_in_4bit` enabled to reduce memory and computational costs by representing weights and activations with lower-precision data types.
-This flag enables 4-bit quantization by replacing the Linear layers with FP4/NF4 layers from bitsandbytes. 
+We are utilizing quantization by setting `quantization_config = BitsAndBytesConfig(load_in_4bit=True)`  to reduce memory and computational costs by representing weights and activations with lower-precision data types.
+This config enables 4-bit quantization by replacing the Linear layers with FP4/NF4 layers from bitsandbytes. 
 Without this flag, this model would not fit on a single NVIDIA A10G.
 
 ### 1. Run the General Setup
@@ -16,7 +18,8 @@ Make sure that you created all required databse objects from the general setup i
 
 ### 2. Build & Upload the container
 ```cmd
-docker build build --platform linux/amd64 -t <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/glm_4v_9b_service:latest .
+docker build build --platform linux/amd64 -t <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/glm_4v_9b_service:latest .  
+
 docker push <ORGNAME>-<ACCTNAME>.registry.snowflakecomputing.com/llm_db/public/image_repository/glm_4v_9b_service:latest
 ```
 
@@ -81,20 +84,16 @@ FROM DIRECTORY('@IMAGE_FILES') LIMIT 1;
 ```
 
 ### 7. Streamlit Apps
-The folder streamlit_app provides code for a Streamlit in Snowflake (SiS) App.  
-This app provides a simple UI to query the LLM in three different ways:  
-1. A simple text-only query
-2. Query images from a stage in Snowflake (must have Directory Table enabled)
-3. Query images from a given URL
-
-It's not yet officially supported to connect to your container services from within a SiS app.
-For that reason, the container itself hosts a Streamlit app which can be reached via its endpoint.  
-You can find the streamlit endpoint endpoint by running:
+The container will host a Streamlit App which can be accessed from anywhere. You can even open it from your mobile phone and upload an image from your camera.
+To get the endpoint, run this command:  
 ```sql
 SHOW ENDPOINTS IN SERVICE LLM_DB.PUBLIC.GLM_V4_9B_SERVICE;
 ```
-This app has two two main differences:  
-* It supports streamed responses
-* It allows uploading local files
+
+You should see these two endpoints and their corresponding URLs:  
+<img width="1000" src="./misc/endpoints.png" alt="endpoints" />
+
+The same Streamlit code that runs in the container can also run in Streamlit in Snowflake (SiS). However, there are a couple of limitations: Service Functions do not support streamed responses, and it is not yet possible to authenticate to the Service via OAuth in SiS. Therefore, you cannot enable streamed responses.
+To get the Streamlit app up and running in Snowflake, simply copy the code into a new Streamlit app within Snowflake.
 
 ### 8. Demo

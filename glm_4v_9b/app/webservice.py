@@ -12,7 +12,7 @@ import base64
 import pypdfium2 as pdfium
 os.environ['HF_HOME'] = '/llm_models'
 model_id = os.getenv('HUGGINGFACE_MODEL')
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer, BitsAndBytesConfig
 
 # Logging
 def get_logger(logger_name):
@@ -32,6 +32,9 @@ app = FastAPI()
 logger.info(f'cuda.is_available(): {torch.cuda.is_available()}')
 logger.info(f'cuda.device_count(): {torch.cuda.device_count()}')
 
+# Define 4bit quantization
+quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+
 # Loading model
 logger.info('Loading Model ...')
 model = AutoModelForCausalLM.from_pretrained(
@@ -39,7 +42,8 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype=torch.bfloat16,
     low_cpu_mem_usage=True,
     trust_remote_code=True,
-    load_in_4bit=True
+    quantization_config=quantization_config
+    #load_in_4bit=True
 )
 tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 streamer = TextIteratorStreamer(tokenizer, timeout=5, skip_prompt=True)
@@ -71,6 +75,28 @@ def generate_text_stream(generation_args):
     thread.start()
     for next_token in streamer:
         yield next_token.replace('<|endoftext|>','')
+        
+def load_image_from_args(args):
+    if 'file_url' in args:
+        response = requests.get(args['file_url'])
+        file_bytes = BytesIO(response.content)
+        file_bytes_r = file_bytes.read()
+        # if file is PNG or JPEG
+        if file_bytes_r.startswith((b'\xff\xd8\xff', b'\x89\x50\x4e\x47')):
+            image = Image.open(file_bytes).convert('RGB')
+        # if file is PDF
+        if file_bytes_r.startswith(b'%PDF'):
+            pdf = pdfium.PdfDocument(file_bytes_r)
+            page = pdf[args['pdf_page']]
+            # Render the page
+            bitmap = page.render(
+                scale = 1,    # 72dpi resolution
+                rotation = 0  # no additional rotation
+            )
+            image = bitmap.to_pil()
+    if 'base64_image_string' in args:
+        image = base64_to_pil_image(args['base64_image_string']).convert('RGB')
+    return image
 
 @app.post("/complete", tags=["Endpoints"])
 async def complete(request: Request):
@@ -80,37 +106,9 @@ async def complete(request: Request):
 
     for index, payload in request_body:
         prompt = payload['prompt']
-        args = payload['args']
-        generation_args = args.get('generation_args', {}) #args['generation_args']
-        logger.info(prompt)
-        logger.info(args)
-        logger.info(generation_args)
+        args = payload.get('args', {})
+        generation_args = args.get('generation_args', {})
 
-        # Function to handle image loading and processing
-        def load_image_from_args(args):
-            logger.info('Found file')
-            if 'file_url' in args:
-                response = requests.get(args['file_url'])
-                file_bytes = BytesIO(response.content)
-                file_bytes_r = file_bytes.read()
-                # if file is PNG or JPEG
-                if file_bytes_r.startswith((b'\xff\xd8\xff', b'\x89\x50\x4e\x47')):
-                    image = Image.open(file_bytes).convert('RGB')
-                # if file is PDF
-                if file_bytes_r.startswith(b'%PDF'):
-                    pdf = pdfium.PdfDocument(file_bytes_r)
-                    page = pdf[args['pdf_page']]
-                    # Render the page
-                    bitmap = page.render(
-                        scale = 1,    # 72dpi resolution
-                        rotation = 0  # no additional rotation
-                    )
-                    image = bitmap.to_pil()
-            if 'base64_image_string' in args:
-                image = base64_to_pil_image(args['base64_image_string']).convert('RGB')
-            return image
-
-        # Check if image processing is needed
         image = load_image_from_args(args) if any(key in args for key in ['file_url', 'base64_image_string']) else None
 
         # Prepare inputs based on whether an image is included
@@ -127,22 +125,17 @@ async def complete(request: Request):
 
         # Handle streaming response
         if args.get('stream'):
-            logger.info('STREAMED RESPONSE')
             generation_args = {**inputs, **generation_args, 'streamer': streamer}
             return StreamingResponse(generate_text_stream(generation_args), media_type="text/plain")
         
         # Handle non-streaming response (called via Snowflake Service Function)
         else:
-            logger.info('NON STREAMED RESPONSE')
             with torch.no_grad():
                 outputs = model.generate(**inputs, **generation_args)
                 outputs = outputs[:, inputs['input_ids'].shape[1]:]
-                #response = tokenizer.decode(outputs[0]).replace('<|endoftext|>', '')
                 response = {'LLM_OUTPUT_TEXT': tokenizer.decode(outputs[0]).replace('<|endoftext|>', '')}
             # if user wants to return base64 image
             if 'return_image_base64' in args:
-                logger.info('BASE64 IMAGE:')
-                logger.info(pil_image_to_base64(image))
                 response['base64_image'] = pil_image_to_base64(image)
             return_data.append([index, response])
     
