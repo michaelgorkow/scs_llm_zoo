@@ -3,8 +3,11 @@ GLM-4V–9B is an open-source model from the latest GLM-4 series developed by Zh
 
 These evaluations encompass a wide range of abilities, including proficiency in Chinese and English, perception and reasoning, text recognition, and chart understanding. Additionally, this generation of models supports 26 languages, including Japanese, Korean, and German, enhancing its multilingual capabilities.
 
-Repository on Hugging Face 🤗:  
+Model Repository on Hugging Face 🤗:  
 [THUDM/glm-4v-9b](https://huggingface.co/THUDM/glm-4v-9b/blob/main/README_en.md)
+
+Supporting Blog article:  
+[Hey Snowflake, describe this image! Multimodel Models in Snowflake](https://medium.com/@michaelgorkow/multimodal-model-in-snowflake-0d9c05fa4518?source=friends_link&sk=de4cc64b8f3039f47bd7396906146124)
 
 ### Minimum Requirements
 * 1x GPU_NV_S (1x NVIDIA A10G)
@@ -104,10 +107,11 @@ The same Streamlit code that runs in the container can also run in Streamlit in 
 To get the Streamlit app up and running in Snowflake, simply copy the code into a new Streamlit app within Snowflake.
 
 ### 8. Notebooks
-This model is not only useful for interactive applications like a chatbot but can easily be used in notebooks as well.
+This model is not only useful for interactive applications like a chatbot but can easily be used in notebooks as well.  
 The demo notebook `multimodal_demo.ipynb` contains the following examples:  
 * Describing a list of images
 * Describing multiple pages of a PDF
-* 
+* Extracting Attributes from Images 
+* Explaining Graphs
 
-### 9. Demo
+### 9. Demo Video
