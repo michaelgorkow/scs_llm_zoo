@@ -55,7 +55,12 @@ AS '/complete';
 
 ### 6. Call the service functions
 ```sql
--- Test function in SQL with pure text
+-- Test function in SQL with pure text and no parameters
+SELECT 
+    object_construct('prompt','Write a small poem about the company Snowflake.') AS LLM_QUERY,
+    GLM_V4_9B(LLM_QUERY)['LLM_OUTPUT_TEXT']::TEXT AS LLM_RESPONSE;
+
+-- Test function in SQL with pure text and define parameters
 SELECT object_construct('prompt','Write a small poem about the company Snowflake.',
                         'args',object_construct(
                             'generation_args',object_construct(
@@ -98,4 +103,11 @@ Open the ingress-URL for streamlit in any browser, login to your Snowflake accou
 The same Streamlit code that runs in the container can also run in Streamlit in Snowflake (SiS). However, there are a couple of limitations: Service Functions do not support streamed responses, and it is not yet possible to authenticate to the Service via OAuth in SiS. Therefore, you cannot enable streamed responses.
 To get the Streamlit app up and running in Snowflake, simply copy the code into a new Streamlit app within Snowflake.
 
-### 8. Demo
+### 8. Notebooks
+This model is not only useful for interactive applications like a chatbot but can easily be used in notebooks as well.
+The demo notebook `multimodal_demo.ipynb` contains the following examples:  
+* Describing a list of images
+* Describing multiple pages of a PDF
+* 
+
+### 9. Demo
