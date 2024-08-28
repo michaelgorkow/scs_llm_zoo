@@ -5,3 +5,4 @@ dependencies:
   - streamlit=1.31.1
   - snowflake-snowpark-python=1.18.0
   - pypdfium2=4.19.0
+  - maptlotlib
