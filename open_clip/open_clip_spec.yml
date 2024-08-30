@@ -1,0 +1,23 @@
+spec:
+  container:
+  - name: open-clip-service-container
+    image: /llm_db/public/image_repository/open_clip_service:latest
+    resources:
+      requests:
+        nvidia.com/gpu: 1
+      limits:
+        nvidia.com/gpu: 1
+    env:
+      OPENCLIP_MODEL: ViT-L-14-quickgelu
+      OPENCLIP_CHECKPOINT: metaclip_fullcc
+    volumeMounts:
+      - name: llm-models
+        mountPath: /llm_models
+  endpoint:
+  - name: api
+    port: 9000
+  volume:
+  - name: llm-models
+    source: "@LLM_DB.PUBLIC.LLM_MODELS"
+    uid: 1000
+    gid: 1000
